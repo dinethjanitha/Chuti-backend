@@ -1,0 +1,7 @@
+.idea
+node_modules
+uploads
+socket-test-html
+.env
+.env.example
+socket-test.html
