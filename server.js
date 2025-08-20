@@ -4,6 +4,7 @@ import app from './app.js';
 import dotenv from 'dotenv';
 import SocketService from './services/socketService.js';
 
+// Load environment variables
 dotenv.config();
 
 const PORT = process.env.PORT || 5000;
@@ -20,11 +21,13 @@ const connectDB = async () => {
   }
 };
 
+// Handle unhandled promise rejections
 process.on('unhandledRejection', (err, promise) => {
   console.log('Unhandled Promise Rejection:', err.message);
   process.exit(1);
 });
 
+// Handle uncaught exceptions
 process.on('uncaughtException', (err) => {
   console.log('Uncaught Exception:', err.message);
   process.exit(1);
@@ -48,7 +51,7 @@ const startServer = async () => {
     
     // Add Socket.IO status logging
     socketService.io.engine.on("connection_error", (err) => {
-      console.log('Socket.IO Connection Error:');
+      console.log('<> Socket.IO Connection Error:');
       console.log('├── Error Code:', err.code);
       console.log('├── Error Message:', err.message);
       console.log('├── Error Context:', err.context);
@@ -57,22 +60,15 @@ const startServer = async () => {
 
     server.listen(PORT, () => {
       console.log(`Server is running on port ${PORT}`);
-      console.log(`Child Safe Chat App Backend`);
-      console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
-      console.log(`API Documentation: http://localhost:${PORT}`);
-      console.log(`Socket.IO enabled for real-time messaging`);
-      console.log(`Socket.IO listening on: ws://localhost:${PORT}`);
-      console.log(`Socket.IO transports: websocket, polling`);
-      console.log(`JWT Secret configured:`, process.env.JWT_SECRET ? 'YES' : 'NO');
-    });
+      });
 
     // Graceful shutdown
     const gracefulShutdown = () => {
-      console.log('👋 Shutting down gracefully...');
+      console.log('Shutting down gracefully...');
       server.close(() => {
-        console.log('💤 HTTP server closed');
+        console.log('HTTP server closed');
         mongoose.connection.close(() => {
-          console.log('� MongoDB connection closed');
+          console.log('MongoDB connection closed');
           process.exit(0);
         });
       });
@@ -87,4 +83,5 @@ const startServer = async () => {
   }
 };
 
+// Start the server
 startServer();

@@ -1,7 +1,11 @@
 .idea
-node_modules
-uploads
-socket-test-html
 .env
-.env.example
+/node_modules
+/uploads
+API_DOCS.md
+API_DOCUMENTATION.md
+FIREBASE_OAUTH_GUIDE.md
+GOOGLE_OAUTH_GUIDE.md
+IMAGE_FEATURE_GUIDE.md
+socket-test-simple.html
 socket-test.html

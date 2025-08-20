@@ -78,7 +78,7 @@ class SocketService {
 
       // Add ping handler for testing
       socket.on('ping', (data) => {
-        console.log('Ping received from', socket.userId, ':', data);
+        console.log('🏓 Ping received from', socket.userId, ':', data);
         socket.emit('pong', { message: 'Pong from server!', originalData: data, timestamp: new Date().toISOString() });
       });
 
@@ -90,14 +90,14 @@ class SocketService {
 
       // Handle disconnection
       socket.on('disconnect', (reason) => {
-        console.log('\nSOCKET DISCONNECTION:');
-        console.log('Socket ID:', socket.id);
-        console.log('User ID:', socket.userId);
-        console.log('Username:', socket.user?.username);
-        console.log('Reason:', reason);
-        console.log('Disconnect Time:', new Date().toISOString());
-        console.log('Remaining Connected Users:', this.connectedUsers.size - 1);
-
+        console.log('\n❌ SOCKET DISCONNECTION:');
+        console.log('├── Socket ID:', socket.id);
+        console.log('├── User ID:', socket.userId);
+        console.log('├── Username:', socket.user?.username);
+        console.log('├── Reason:', reason);
+        console.log('├── Disconnect Time:', new Date().toISOString());
+        console.log('└── Remaining Connected Users:', this.connectedUsers.size - 1);
+        
         this.handleDisconnection(socket);
       });
 
