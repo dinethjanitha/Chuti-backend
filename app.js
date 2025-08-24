@@ -63,6 +63,8 @@ const corsOption = {
     "http://localhost:19006", // Expo web port
     "exp://localhost:19000", // Expo mobile
     "exp://192.168.8.145:8082", // Your Expo mobile app
+    "exp://192.168.8.145:8082", // Your Expo mobile app
+    "exp://192.168.8.137:8081", // Your Expo mobile app
   ],
   methods: ["GET", "POST", "PUT", "DELETE"],
   allowedHeaders: ["Content-Type", "Authorization"],
