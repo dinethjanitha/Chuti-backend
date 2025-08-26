@@ -1,6 +1,5 @@
 {
   "dependencies": {
-    "@react-native-async-storage/async-storage": "^2.2.0",
     "axios": "^1.11.0",
     "bcryptjs": "^3.0.2",
     "cookie-parser": "^1.4.7",
@@ -12,10 +11,9 @@
     "mongodb": "^6.18.0",
     "mongoose": "^8.17.0",
     "multer": "^2.0.2",
+    "nodemailer": "^7.0.5",
     "nodemon": "^3.1.10",
-    "react-native-dotenv": "^3.4.11",
     "socket.io": "^4.8.1",
-    "socket.io-client": "^4.8.1",
     "uuid": "^11.1.0"
   },
   "name": "chuti",

@@ -1,6 +1,8 @@
 import { auth, isFirebaseConfigured } from '../config/firebase.js';
 import User from '../Models/User.js';
-import { createSendToken } from '../utils/jwt.js';
+import Verification from '../Models/Verification.js';
+import emailService from '../services/emailService.js';
+import { createSendToken, generateToken } from '../utils/jwt.js';
 import { verifyFirebaseToken, handleFirebaseAuth, checkFirebaseConfig } from '../middleware/firebaseAuth.js';
 
 // Google OAuth login/signup through Firebase
@@ -85,6 +87,9 @@ export const completeGoogleRegistration = async (req, res) => {
       });
     }
 
+    // Determine role based on age
+    const userRole = age < 18 ? 'children' : 'user';
+
     // Generate unique username from Google email
     let username = decodedToken.email?.split('@')[0] || 
                    decodedToken.name?.replace(/\s+/g, '_').toLowerCase() ||
@@ -105,14 +110,74 @@ export const completeGoogleRegistration = async (req, res) => {
       email: decodedToken.email,
       fullName,
       age,
+      role: userRole,
       parentEmail,
       profilePicture: decodedToken.picture || '',
       authProvider: 'google',
-      isVerified: false // Still requires parent verification
+      isVerified: false, // User needs to verify email
+      emailVerified: false,
+      parentEmailVerified: false,
+      verificationStatus: 'pending'
     });
 
-    // Send success response with token
-    createSendToken(newUser, 201, res);
+    // Create verification codes and send emails
+    const verificationResults = {};
+    
+    try {
+      // Send verification to user email
+      const userVerification = await Verification.createVerification(
+        newUser.email, 
+        'user_email', 
+        newUser._id
+      );
+      
+      await emailService.sendVerificationEmail(
+        newUser.email, 
+        userVerification.code, 
+        newUser.fullName || newUser.username
+      );
+      
+      verificationResults.userEmail = { success: true };
+    } catch (emailError) {
+      console.error('Error sending user verification email:', emailError);
+      verificationResults.userEmail = { success: false, error: emailError.message };
+    }
+
+    // Send verification to parent email if user is a child
+    if (newUser.parentEmail && newUser.age < 13) {
+      try {
+        const parentVerification = await Verification.createVerification(
+          newUser.parentEmail, 
+          'parent_email', 
+          newUser._id
+        );
+        
+        await emailService.sendParentVerificationEmail(
+          newUser.parentEmail, 
+          newUser.fullName || newUser.username,
+          newUser.email,
+          parentVerification.code
+        );
+        
+        verificationResults.parentEmail = { success: true };
+      } catch (emailError) {
+        console.error('Error sending parent verification email:', emailError);
+        verificationResults.parentEmail = { success: false, error: emailError.message };
+      }
+    }
+
+    // Send success response with token and verification info
+    res.status(201).json({
+      status: 'success',
+      message: 'User created successfully. Please check your email for verification codes.',
+      token: generateToken(newUser._id),
+      data: {
+        user: newUser.getPublicProfile(),
+        verificationResults,
+        requiresVerification: true,
+        requiresParentVerification: !!(newUser.parentEmail && newUser.age < 13)
+      }
+    });
 
   } catch (error) {
     console.error('Google registration error:', error);

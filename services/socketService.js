@@ -3,6 +3,8 @@ import jwt from 'jsonwebtoken';
 import User from '../Models/User.js';
 import Chat from '../Models/Chat.js';
 import Message from '../Models/Message.js';
+import { moderateSocketMessage } from '../middleware/moderationMiddleware.js';
+import contentMonitoringService from './contentMonitoringService.js';
 
 class SocketService {
   constructor(server) {
@@ -17,6 +19,8 @@ class SocketService {
     "http://localhost:19006", // Expo web port
     "exp://localhost:19000", // Expo mobile
     "exp://192.168.8.145:8082", // Your Expo mobile app
+    "exp://192.168.8.137:8081", // Your Expo mobile app
+    "exp://192.168.8.137:8082", // Your Expo mobile app
   ],
         methods: ["GET", "POST"],
         credentials: true
@@ -215,6 +219,46 @@ class SocketService {
           console.log('❌ Invalid message data:', { chatId, content });
           socket.emit('error', { message: 'Chat ID and content are required' });
           return;
+        }
+
+        // 🔒 SEXUAL CONTENT MODERATION CHECK WITH PARENT NOTIFICATION
+        if (messageType === 'text') {
+          try {
+            console.log('🛡️ Checking message for inappropriate content...');
+            const monitoring = await contentMonitoringService.monitorTextContent(content, socket.userId, chatId);
+            
+            if (monitoring.blocked) {
+              console.log('❌ Inappropriate content blocked:', {
+                userId: socket.userId,
+                chatId,
+                reason: monitoring.reason,
+                parentNotified: monitoring.parentNotified
+              });
+              
+              socket.emit('messageBlocked', {
+                reason: monitoring.reason,
+                message: monitoring.message,
+                blocked: true,
+                parentNotified: monitoring.parentNotified
+              });
+              return;
+            }
+            console.log('✅ Content approved by monitoring system');
+          } catch (monitoringError) {
+            console.error('⚠️ Content monitoring failed, using fallback moderation:', monitoringError);
+            
+            // Fallback to basic moderation if monitoring service fails
+            const moderation = await moderateSocketMessage(content);
+            if (moderation.is_sexual) {
+              console.log('❌ Sexual content blocked by fallback moderation');
+              socket.emit('messageBlocked', {
+                reason: 'sexual_content',
+                message: 'Your message contains inappropriate content and has been blocked. Please keep conversations appropriate.',
+                blocked: true
+              });
+              return;
+            }
+          }
         }
 
         // Check chat access

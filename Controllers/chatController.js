@@ -181,10 +181,6 @@ export const getChatDetails = async (req, res) => {
         }
       ]);
 
-      console.log('Chat participants:', chat?.participants);
-      console.log('Current userId:', userId);
-      console.log('isParticipant result:', chat?.isParticipant(userId));
-
     if (!chat || !chat.isActive) {
       return res.status(404).json({
         success: false,

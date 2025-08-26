@@ -12,7 +12,10 @@ import userRoutes from "./Routes/userRoutes.js";
 import chatRoutes from "./Routes/chatRoutes.js";
 import messageRoutes from "./Routes/messageRoutes.js";
 import imageRoutes from "./Routes/imageRoutes.js";
-import debugRoutes from "./routes/debug.js";
+import moderationRoutes from "./Routes/moderationRoutes.js";
+import verificationRoutes from "./Routes/verificationRoutes.js";
+
+;
 
 // Load environment variables
 dotenv.config();
@@ -88,7 +91,8 @@ app.use('/api/users', userRoutes);
 app.use('/api/chat', chatRoutes);
 app.use('/api/messages', messageRoutes);
 app.use('/api/images', imageRoutes);
-app.use('/api/debug', debugRoutes);
+app.use('/api/moderation', moderationRoutes);
+app.use('/api/verification', verificationRoutes);
 
 // Serve static files (uploaded images)
 app.use('/uploads', express.static('uploads'));

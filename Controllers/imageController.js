@@ -1,5 +1,6 @@
 import Message from '../Models/Message.js';
 import Chat from '../Models/Chat.js';
+import contentMonitoringService from '../services/contentMonitoringService.js';
 import path from 'path';
 import fs from 'fs';
 
@@ -42,6 +43,52 @@ export const uploadImage = async (req, res) => {
 
     // Create file URL
     const fileUrl = `/uploads/images/${req.file.filename}`;
+    const fullImagePath = path.join(process.cwd(), 'uploads', 'images', req.file.filename);
+    
+    // 🛡️ MONITOR IMAGE CONTENT FOR INAPPROPRIATE MATERIAL
+    try {
+      console.log('🔍 Monitoring uploaded image for inappropriate content...');
+      const monitoring = await contentMonitoringService.monitorImageContent(
+        fullImagePath, 
+        userId, 
+        chatId
+      );
+      
+      if (monitoring.blocked) {
+        console.log('❌ Inappropriate image blocked:', {
+          userId,
+          chatId,
+          filename: req.file.filename,
+          reason: monitoring.reason,
+          parentNotified: monitoring.parentNotified
+        });
+        
+        // Delete the uploaded file since it's inappropriate
+        try {
+          fs.unlinkSync(fullImagePath);
+          console.log('🗑️ Inappropriate image file deleted');
+        } catch (deleteError) {
+          console.error('❌ Failed to delete inappropriate image file:', deleteError);
+        }
+        
+        return res.status(400).json({
+          success: false,
+          message: monitoring.message,
+          moderation: {
+            blocked: true,
+            reason: monitoring.reason,
+            parentNotified: monitoring.parentNotified
+          }
+        });
+      }
+      
+      console.log('✅ Image content approved by monitoring system');
+    } catch (monitoringError) {
+      console.error('⚠️ Image content monitoring failed:', monitoringError);
+      // In production, you might want to block images if monitoring fails
+      // For now, we'll allow the image but log the error
+      console.warn('⚠️ Allowing image due to monitoring service error (fail-safe)');
+    }
     
     // Create image message
     const newMessage = new Message({

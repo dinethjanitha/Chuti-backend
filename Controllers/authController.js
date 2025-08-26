@@ -1,4 +1,6 @@
 import User from '../Models/User.js';
+import Verification from '../Models/Verification.js';
+import emailService from '../services/emailService.js';
 import { createSendToken, generateToken, verifyToken } from '../utils/jwt.js';
 
 // Register new user
@@ -26,6 +28,9 @@ export const signup = async (req, res) => {
       });
     }
 
+    // Determine role based on age
+    const userRole = age < 18 ? 'children' : 'user';
+
     // Create new user
     const newUser = await User.create({
       username,
@@ -33,11 +38,72 @@ export const signup = async (req, res) => {
       password,
       fullName: fullName || username, // Use username as fullName if not provided
       age,
-      parentEmail: age < 13 ? parentEmail : undefined // Only set parentEmail for children under 13
+      role: userRole,
+      parentEmail: age < 13 ? parentEmail : undefined, // Only set parentEmail for children under 13
+      isVerified: false, // User needs to verify email
+      emailVerified: false,
+      parentEmailVerified: false,
+      verificationStatus: 'pending'
     });
 
-    // Send success response with token
-    createSendToken(newUser, 201, res);
+    // Create verification codes and send emails
+    const verificationResults = {};
+    
+    try {
+      // Send verification to user email
+      const userVerification = await Verification.createVerification(
+        newUser.email, 
+        'user_email', 
+        newUser._id
+      );
+      
+      await emailService.sendVerificationEmail(
+        newUser.email, 
+        userVerification.code, 
+        newUser.fullName || newUser.username
+      );
+      
+      verificationResults.userEmail = { success: true };
+    } catch (emailError) {
+      console.error('Error sending user verification email:', emailError);
+      verificationResults.userEmail = { success: false, error: emailError.message };
+    }
+
+    // Send verification to parent email if user is a child
+    if (newUser.parentEmail && newUser.age < 13) {
+      try {
+        const parentVerification = await Verification.createVerification(
+          newUser.parentEmail, 
+          'parent_email', 
+          newUser._id
+        );
+        
+        await emailService.sendParentVerificationEmail(
+          newUser.parentEmail, 
+          newUser.fullName || newUser.username,
+          newUser.email,
+          parentVerification.code
+        );
+        
+        verificationResults.parentEmail = { success: true };
+      } catch (emailError) {
+        console.error('Error sending parent verification email:', emailError);
+        verificationResults.parentEmail = { success: false, error: emailError.message };
+      }
+    }
+
+    // Send success response with token and verification info
+    res.status(201).json({
+      status: 'success',
+      message: 'User created successfully. Please check your email for verification codes.',
+      token: generateToken(newUser._id),
+      data: {
+        user: newUser.getPublicProfile(),
+        verificationResults,
+        requiresVerification: true,
+        requiresParentVerification: !!(newUser.parentEmail && newUser.age < 13)
+      }
+    });
 
   } catch (error) {
     // Handle validation errors
@@ -165,8 +231,8 @@ export const getMe = async (req, res) => {
 // Update current user
 export const updateMe = async (req, res) => {
   try {
-    // Fields that can be updated
-    const allowedFields = ['fullName', 'profilePicture'];
+    // Fields that can be updated - children can update username and fullName
+    const allowedFields = ['fullName', 'profilePicture', 'username'];
     const updates = {};
 
     // Filter allowed fields
@@ -181,6 +247,21 @@ export const updateMe = async (req, res) => {
         status: 'fail',
         message: 'No valid fields to update'
       });
+    }
+
+    // If updating username, check if it's already taken
+    if (updates.username) {
+      const existingUser = await User.findOne({ 
+        username: updates.username,
+        _id: { $ne: req.user.id } // Exclude current user
+      });
+      
+      if (existingUser) {
+        return res.status(400).json({
+          status: 'fail',
+          message: 'Username is already taken'
+        });
+      }
     }
 
     const updatedUser = await User.findByIdAndUpdate(
@@ -199,6 +280,24 @@ export const updateMe = async (req, res) => {
       }
     });
   } catch (error) {
+    // Handle validation errors
+    if (error.name === 'ValidationError') {
+      const errors = Object.values(error.errors).map(err => err.message);
+      return res.status(400).json({
+        status: 'fail',
+        message: 'Validation Error',
+        errors
+      });
+    }
+
+    // Handle duplicate key error
+    if (error.code === 11000) {
+      return res.status(400).json({
+        status: 'fail',
+        message: 'Username is already taken'
+      });
+    }
+
     res.status(500).json({
       status: 'error',
       message: 'Something went wrong while updating user data'

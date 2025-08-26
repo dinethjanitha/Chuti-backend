@@ -62,6 +62,19 @@ const userSchema = new mongoose.Schema({
     type: Boolean,
     default: false
   },
+  emailVerified: {
+    type: Boolean,
+    default: false
+  },
+  parentEmailVerified: {
+    type: Boolean,
+    default: false
+  },
+  verificationStatus: {
+    type: String,
+    enum: ['pending', 'partial', 'complete'],
+    default: 'pending'
+  },
   profilePicture: {
     type: String,
     default: ''
@@ -81,7 +94,7 @@ const userSchema = new mongoose.Schema({
   },
   role: {
     type: String,
-    enum: ['user', 'moderator', 'admin'],
+    enum: ['children', 'user', 'moderator', 'admin'],
     default: 'user'
   },
   isActive: {
@@ -132,14 +145,19 @@ userSchema.methods.getPublicProfile = function() {
   return {
     id: this._id,
     username: this.username,
+    email: this.email,
     fullName: this.fullName,
     age: this.age,
+    parentEmail: this.parentEmail,
     profilePicture: this.profilePicture,
     isOnline: this.isOnline,
     lastSeen: this.lastSeen,
     role: this.role,
     authProvider: this.authProvider,
     isVerified: this.isVerified,
+    emailVerified: this.emailVerified,
+    parentEmailVerified: this.parentEmailVerified,
+    verificationStatus: this.verificationStatus,
     createdAt: this.createdAt
   };
 };
