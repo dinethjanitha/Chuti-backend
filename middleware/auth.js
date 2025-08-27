@@ -80,3 +80,51 @@ export const requireMinAge = (minAge) => {
     next();
   };
 };
+
+// Admin only middleware - check if user is an admin
+export const adminOnly = async (req, res, next) => {
+  try {
+    let token;
+
+    // Check if token exists in headers
+    if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
+      token = req.headers.authorization.split(' ')[1];
+    }
+
+    if (!token) {
+      return res.status(401).json({
+        status: 'fail',
+        message: 'Access denied. Admin token required.'
+      });
+    }
+
+    // Verify token
+    const decoded = verifyToken(token);
+
+    // Check if user still exists and is an admin
+    const currentUser = await User.findById(decoded.userId);
+    if (!currentUser) {
+      return res.status(401).json({
+        status: 'fail',
+        message: 'Invalid admin token.'
+      });
+    }
+
+    // Check if user has admin role
+    if (currentUser.role !== 'admin') {
+      return res.status(403).json({
+        status: 'fail',
+        message: 'Access denied. Admin privileges required.'
+      });
+    }
+
+    // Grant access to admin route
+    req.user = currentUser;
+    next();
+  } catch (error) {
+    return res.status(401).json({
+      status: 'fail',
+      message: 'Invalid admin token.'
+    });
+  }
+};

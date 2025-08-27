@@ -14,6 +14,7 @@ import messageRoutes from "./Routes/messageRoutes.js";
 import imageRoutes from "./Routes/imageRoutes.js";
 import moderationRoutes from "./Routes/moderationRoutes.js";
 import verificationRoutes from "./Routes/verificationRoutes.js";
+import adminRoutes from "./Routes/adminRoutes.js";
 
 ;
 
@@ -64,12 +65,13 @@ const corsOption = {
     "http://localhost:8081", // Default Expo port
     "http://localhost:8083", // Alternative Expo port
     "http://localhost:19006", // Expo web port
+    "http://localhost:3000", // Admin panel (Next.js)
     "exp://localhost:19000", // Expo mobile
     "exp://192.168.8.145:8082", // Your Expo mobile app
     "exp://192.168.8.145:8082", // Your Expo mobile app
     "exp://192.168.8.137:8081", // Your Expo mobile app
   ],
-  methods: ["GET", "POST", "PUT", "DELETE"],
+  methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
   allowedHeaders: ["Content-Type", "Authorization"],
   credentials: true,
 };
@@ -93,6 +95,7 @@ app.use('/api/messages', messageRoutes);
 app.use('/api/images', imageRoutes);
 app.use('/api/moderation', moderationRoutes);
 app.use('/api/verification', verificationRoutes);
+app.use('/api/admin', adminRoutes);
 
 // Serve static files (uploaded images)
 app.use('/uploads', express.static('uploads'));

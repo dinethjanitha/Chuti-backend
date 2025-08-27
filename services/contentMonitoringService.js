@@ -222,11 +222,6 @@ class ContentMonitoringService {
             categories: imageModeration.categories
           }
         };
-          details: {
-            confidence: imageModeration.confidence,
-            categories: imageModeration.categories
-          }
-        };
       }
 
       console.log('✅ Image content approved');

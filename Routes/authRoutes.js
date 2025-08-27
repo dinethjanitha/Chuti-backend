@@ -8,6 +8,7 @@ import {
   changePassword,
   refreshToken
 } from '../Controllers/authController.js';
+import { adminLogin } from '../Controllers/adminController.js';
 import { protect } from '../middleware/auth.js';
 import googleAuthRoutes from './firebaseAuthRoutes.js'; // Renamed but still using Firebase for Google OAuth
 
@@ -19,6 +20,7 @@ router.use('/google', googleAuthRoutes);
 // Public routes
 router.post('/signup', signup);
 router.post('/login', login);
+router.post('/admin-login', adminLogin);
 router.post('/refresh-token', refreshToken);
 
 // Protected routes (require authentication)

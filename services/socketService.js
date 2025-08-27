@@ -221,31 +221,29 @@ class SocketService {
           return;
         }
 
-        // 🔒 SEXUAL CONTENT MODERATION CHECK WITH PARENT NOTIFICATION
+        // 🔒 FAST SEXUAL CONTENT MODERATION CHECK WITH ASYNC PARENT NOTIFICATION
         if (messageType === 'text') {
           try {
-            console.log('🛡️ Checking message for inappropriate content...');
+            console.log('⚡ Fast content check for immediate UI response...');
             const monitoring = await contentMonitoringService.monitorTextContent(content, socket.userId, chatId);
             
             if (monitoring.blocked) {
-              console.log('❌ Inappropriate content blocked:', {
+              console.log('❌ Inappropriate content blocked instantly:', {
                 userId: socket.userId,
                 chatId,
-                reason: monitoring.reason,
-                parentNotified: monitoring.parentNotified
+                reason: monitoring.reason
               });
               
               socket.emit('messageBlocked', {
                 reason: monitoring.reason,
                 message: monitoring.message,
-                blocked: true,
-                parentNotified: monitoring.parentNotified
+                blocked: true
               });
               return;
             }
-            console.log('✅ Content approved by monitoring system');
+            console.log('✅ Content approved in fast check');
           } catch (monitoringError) {
-            console.error('⚠️ Content monitoring failed, using fallback moderation:', monitoringError);
+            console.error('⚠️ Fast content monitoring failed, using fallback moderation:', monitoringError);
             
             // Fallback to basic moderation if monitoring service fails
             const moderation = await moderateSocketMessage(content);
