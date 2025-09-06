@@ -5,14 +5,15 @@ import User from '../Models/User.js';
 // Send a message
 export const sendMessage = async (req, res) => {
   try {
-    const { chatId, content, messageType = 'text', replyTo = null } = req.body;
+    const { content, messageType = 'text', replyTo = null } = req.body;
+    const { chatId } = req.params;
     const userId = req.user.id;
 
     // Validate input
-    if (!chatId || !content || content.trim().length === 0) {
+    if (!content || content.trim().length === 0) {
       return res.status(400).json({
         success: false,
-        message: 'Chat ID and content are required'
+        message: 'Message content is required'
       });
     }
 
@@ -28,7 +29,7 @@ export const sendMessage = async (req, res) => {
     if (!chat.isParticipant(userId)) {
       return res.status(403).json({
         success: false,
-        message: 'You are not a participant in this chat'
+        message: 'Access denied. You are not a participant in this chat.'
       });
     }
 
@@ -74,18 +75,20 @@ export const sendMessage = async (req, res) => {
     chat.lastActivity = new Date();
     await chat.save();
 
-    // Emit to all chat participants
+    // Emit to all chat participants (only if io exists)
     const io = req.app.get('io');
-    chat.participants.forEach(participant => {
-      if (participant.isActive) {
-        io.to(`user_${participant.user}`).emit('newMessage', newMessage);
-      }
-    });
+    if (io) {
+      chat.participants.forEach(participant => {
+        if (participant.isActive) {
+          io.to(`user_${participant.user}`).emit('newMessage', newMessage);
+        }
+      });
+    }
 
     res.status(201).json({
       success: true,
       message: 'Message sent successfully',
-      data: newMessage
+      data: { message: newMessage }
     });
 
   } catch (error) {
@@ -117,7 +120,7 @@ export const getChatMessages = async (req, res) => {
     if (!chat.isParticipant(userId)) {
       return res.status(403).json({
         success: false,
-        message: 'Access denied'
+        message: 'Access denied. You are not a participant in this chat.'
       });
     }
 
@@ -170,26 +173,35 @@ export const getChatMessages = async (req, res) => {
         }
       );
 
-      // Emit read receipts
+      // Emit read receipts (only if io exists)
       const io = req.app.get('io');
-      chat.participants.forEach(participant => {
-        if (participant.isActive && participant.user.toString() !== userId) {
-          io.to(`user_${participant.user}`).emit('messagesRead', {
-            chatId,
-            messageIds: unreadMessageIds,
-            readBy: userId
-          });
-        }
-      });
+      if (io) {
+        chat.participants.forEach(participant => {
+          if (participant.isActive && participant.user.toString() !== userId) {
+            io.to(`user_${participant.user}`).emit('messagesRead', {
+              chatId,
+              messageIds: unreadMessageIds,
+              readBy: userId
+            });
+          }
+        });
+      }
     }
+
+    // Get total count for pagination
+    const totalMessages = await Message.countDocuments({
+      chat: chatId,
+      isDeleted: false
+    });
 
     res.status(200).json({
       success: true,
       message: 'Messages retrieved successfully',
-      data: messages.reverse(), // Return in chronological order
+      data: messages, // Keep newest first order
       pagination: {
         page: parseInt(page),
         limit: parseInt(limit),
+        total: totalMessages,
         hasMore: messages.length === parseInt(limit)
       }
     });
@@ -207,22 +219,29 @@ export const getChatMessages = async (req, res) => {
 // Edit message
 export const editMessage = async (req, res) => {
   try {
-    const { messageId } = req.params;
+    const { id } = req.params; // Changed from messageId to id
     const { content } = req.body;
     const userId = req.user.id;
 
     if (!content || content.trim().length === 0) {
       return res.status(400).json({
         success: false,
-        message: 'Content is required'
+        message: 'Message content is required'
       });
     }
 
-    const message = await Message.findById(messageId);
-    if (!message || message.isDeleted) {
+    const message = await Message.findById(id);
+    if (!message) {
       return res.status(404).json({
         success: false,
         message: 'Message not found'
+      });
+    }
+
+    if (message.isDeleted) {
+      return res.status(400).json({
+        success: false,
+        message: 'Cannot edit deleted message'
       });
     }
 
@@ -256,19 +275,21 @@ export const editMessage = async (req, res) => {
       }
     ]);
 
-    // Get chat participants for real-time update
+    // Get chat participants for real-time update (only if io exists)
     const chat = await Chat.findById(message.chat);
     const io = req.app.get('io');
-    chat.participants.forEach(participant => {
-      if (participant.isActive) {
-        io.to(`user_${participant.user}`).emit('messageEdited', message);
-      }
-    });
+    if (io) {
+      chat.participants.forEach(participant => {
+        if (participant.isActive) {
+          io.to(`user_${participant.user}`).emit('messageEdited', message);
+        }
+      });
+    }
 
     res.status(200).json({
       success: true,
-      message: 'Message edited successfully',
-      data: message
+      message: 'Message updated successfully',
+      data: { message }
     });
 
   } catch (error) {
@@ -284,44 +305,55 @@ export const editMessage = async (req, res) => {
 // Delete message
 export const deleteMessage = async (req, res) => {
   try {
-    const { messageId } = req.params;
+    const { id } = req.params; // Changed from messageId to id
     const userId = req.user.id;
 
-    const message = await Message.findById(messageId);
-    if (!message || message.isDeleted) {
+    const message = await Message.findById(id);
+    if (!message) {
       return res.status(404).json({
         success: false,
         message: 'Message not found'
       });
     }
 
+    if (message.isDeleted) {
+      return res.status(400).json({
+        success: false,
+        message: 'Message is already deleted'
+      });
+    }
+
     // Check permissions (sender or chat moderator)
     const chat = await Chat.findById(message.chat);
-    const canDelete = message.sender.toString() === userId || chat.canModerate(userId);
+    const isAdmin = req.user.role === 'admin';
+    const canDelete = message.sender.toString() === userId || chat.canModerate(userId) || isAdmin;
 
     if (!canDelete) {
       return res.status(403).json({
         success: false,
-        message: 'Insufficient permissions to delete message'
+        message: 'You can only delete your own messages'
       });
     }
 
     // Soft delete
     message.isDeleted = true;
+    message.content = 'This message has been deleted';
     message.deletedAt = new Date();
     message.deletedBy = userId;
     await message.save();
 
-    // Emit to chat participants
+    // Emit to chat participants (only if io exists)
     const io = req.app.get('io');
-    chat.participants.forEach(participant => {
-      if (participant.isActive) {
-        io.to(`user_${participant.user}`).emit('messageDeleted', {
-          messageId: message._id,
-          chatId: message.chat
-        });
-      }
-    });
+    if (io) {
+      chat.participants.forEach(participant => {
+        if (participant.isActive) {
+          io.to(`user_${participant.user}`).emit('messageDeleted', {
+            messageId: message._id,
+            chatId: message.chat
+          });
+        }
+      });
+    }
 
     res.status(200).json({
       success: true,
@@ -388,16 +420,18 @@ export const addReaction = async (req, res) => {
     await message.save();
     await message.populate('reactions.user', 'username fullName');
 
-    // Emit to chat participants
+    // Emit to chat participants (only if io exists)
     const io = req.app.get('io');
-    chat.participants.forEach(participant => {
-      if (participant.isActive) {
-        io.to(`user_${participant.user}`).emit('messageReactionUpdated', {
-          messageId: message._id,
-          reactions: message.reactions
-        });
-      }
-    });
+    if (io) {
+      chat.participants.forEach(participant => {
+        if (participant.isActive) {
+          io.to(`user_${participant.user}`).emit('messageReactionUpdated', {
+            messageId: message._id,
+            reactions: message.reactions
+          });
+        }
+      });
+    }
 
     res.status(200).json({
       success: true,

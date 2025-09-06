@@ -8,7 +8,7 @@ import contentMonitoringService from './contentMonitoringService.js';
 
 class SocketService {
   constructor(server) {
-    console.log('\n🔌 Initializing Socket.IO Service...');
+    console.log('\n Initializing Socket.IO Service...');
     
     this.io = new Server(server, {
       cors: {
@@ -32,7 +32,7 @@ class SocketService {
     this.connectedUsers = new Map(); // userId -> socketId
     this.userSockets = new Map(); // socketId -> userId
     
-    console.log('✅ Socket.IO Server initialized with CORS origins:', [
+    console.log(' Socket.IO Server initialized with CORS origins:', [
       "http://localhost:8082",
       "http://localhost:8081",
       "http://localhost:8083",
@@ -45,12 +45,12 @@ class SocketService {
   }
 
   setupSocketHandlers() {
-    console.log('🔧 Setting up Socket.IO event handlers...');
+    console.log(' Setting up Socket.IO event handlers...');
     
     this.io.use(this.authenticateSocket.bind(this));
 
     this.io.on('connection', (socket) => {
-      console.log('\n🔌 NEW SOCKET CONNECTION:');
+      console.log('\n NEW SOCKET CONNECTION:');
       console.log('├── Socket ID:', socket.id);
       console.log('├── User ID:', socket.userId);
       console.log('├── Username:', socket.user?.username);
@@ -65,14 +65,14 @@ class SocketService {
       this.connectedUsers.set(socket.userId, socket.id);
       this.userSockets.set(socket.id, socket.userId);
       
-      console.log('📊 Updated Connection Maps:');
+      console.log(' Updated Connection Maps:');
       console.log('├── Connected Users Map Size:', this.connectedUsers.size);
       console.log('├── User Sockets Map Size:', this.userSockets.size);
       console.log('└── Connected Users:', Array.from(this.connectedUsers.keys()));
 
       // Join user to their personal room
       socket.join(`user_${socket.userId}`);
-      console.log(`🏠 User joined personal room: user_${socket.userId}`);
+      console.log(` User joined personal room: user_${socket.userId}`);
 
       // Join user to their chat rooms
       this.joinUserChats(socket);
@@ -82,7 +82,7 @@ class SocketService {
 
       // Add ping handler for testing
       socket.on('ping', (data) => {
-        console.log('🏓 Ping received from', socket.userId, ':', data);
+        console.log(' Ping received from', socket.userId, ':', data);
         socket.emit('pong', { message: 'Pong from server!', originalData: data, timestamp: new Date().toISOString() });
       });
 
@@ -94,7 +94,7 @@ class SocketService {
 
       // Handle disconnection
       socket.on('disconnect', (reason) => {
-        console.log('\n❌ SOCKET DISCONNECTION:');
+        console.log('\n SOCKET DISCONNECTION:');
         console.log('├── Socket ID:', socket.id);
         console.log('├── User ID:', socket.userId);
         console.log('├── Username:', socket.user?.username);
@@ -108,25 +108,25 @@ class SocketService {
       // Log all socket events for debugging
       const originalEmit = socket.emit.bind(socket);
       socket.emit = function(event, ...args) {
-        console.log(`📤 Emitting to ${socket.userId} (${socket.id}):`, event, args.length > 0 ? args[0] : '');
+        console.log(` Emitting to ${socket.userId} (${socket.id}):`, event, args.length > 0 ? args[0] : '');
         return originalEmit(event, ...args);
       };
 
       const originalOn = socket.on.bind(socket);
       socket.on = function(event, handler) {
         const wrappedHandler = (...args) => {
-          console.log(`📥 Event received from ${socket.userId} (${socket.id}):`, event, args.length > 0 ? args[0] : '');
+          console.log(` Event received from ${socket.userId} (${socket.id}):`, event, args.length > 0 ? args[0] : '');
           return handler(...args);
         };
         return originalOn(event, wrappedHandler);
       };
     });
 
-    console.log('✅ Socket.IO event handlers setup complete');
+    console.log(' Socket.IO event handlers setup complete');
   }
 
   async authenticateSocket(socket, next) {
-    console.log('\n🔐 Socket Authentication Attempt:');
+    console.log('\n Socket Authentication Attempt:');
     console.log('├── Socket ID:', socket.id);
     console.log('├── Remote Address:', socket.handshake.address);
     console.log('├── Auth Token from handshake.auth:', socket.handshake.auth.token ? '***PROVIDED***' : 'NOT PROVIDED');
@@ -136,33 +136,33 @@ class SocketService {
       const token = socket.handshake.auth.token || socket.handshake.headers.authorization;
       
       if (!token) {
-        console.log('❌ Authentication failed: No token provided');
+        console.log(' Authentication failed: No token provided');
         return next(new Error('Authentication token required'));
       }
 
-      console.log('🔍 Verifying JWT token...');
+      console.log(' Verifying JWT token...');
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
-      console.log('✅ JWT decoded successfully:', { userId: decoded.userId || decoded.id });
+      console.log(' JWT decoded successfully:', { userId: decoded.userId || decoded.id });
       
       const userId = decoded.userId || decoded.id; // Handle both userId and id fields
       
-      console.log('🔍 Finding user in database...');
+      console.log(' Finding user in database...');
       const user = await User.findById(userId).select('_id username fullName isActive');
       
       if (!user) {
-        console.log('❌ Authentication failed: User not found in database');
+        console.log(' Authentication failed: User not found in database');
         return next(new Error('User not found'));
       }
 
       if (!user.isActive) {
-        console.log('❌ Authentication failed: User account is not active');
+        console.log(' Authentication failed: User account is not active');
         return next(new Error('User account not active'));
       }
 
       socket.userId = user._id.toString();
       socket.user = user;
       
-      console.log('✅ Socket authentication successful:');
+      console.log(' Socket authentication successful:');
       console.log('├── User ID:', socket.userId);
       console.log('├── Username:', socket.user.username);
       console.log('├── Full Name:', socket.user.fullName);
@@ -170,7 +170,7 @@ class SocketService {
       
       next();
     } catch (error) {
-      console.log('❌ Socket authentication error:');
+      console.log(' Socket authentication error:');
       console.log('├── Error Type:', error.name);
       console.log('├── Error Message:', error.message);
       console.log('└── Stack:', error.stack);
@@ -179,7 +179,7 @@ class SocketService {
   }
 
   async joinUserChats(socket) {
-    console.log('\n🏠 Joining user to chat rooms:');
+    console.log('\n Joining user to chat rooms:');
     console.log('├── User ID:', socket.userId);
     
     try {
@@ -196,16 +196,16 @@ class SocketService {
         console.log(`├── [${index + 1}] Joined chat_${chat._id} (${chat.chatType})`);
       });
       
-      console.log('└── ✅ User joined all chat rooms successfully');
+      console.log('└──  User joined all chat rooms successfully');
     } catch (error) {
-      console.log('└── ❌ Error joining user chats:', error.message);
+      console.log('└──  Error joining user chats:', error.message);
     }
   }
 
   setupMessageHandlers(socket) {
     // Send message
     socket.on('sendMessage', async (data) => {
-      console.log('📤 sendMessage event received:', {
+      console.log(' sendMessage event received:', {
         socketId: socket.id,
         userId: socket.userId,
         data: data
@@ -216,19 +216,19 @@ class SocketService {
 
         // Validate input
         if (!chatId || !content || content.trim().length === 0) {
-          console.log('❌ Invalid message data:', { chatId, content });
+          console.log(' Invalid message data:', { chatId, content });
           socket.emit('error', { message: 'Chat ID and content are required' });
           return;
         }
 
-        // 🔒 FAST SEXUAL CONTENT MODERATION CHECK WITH ASYNC PARENT NOTIFICATION
+        //  FAST SEXUAL CONTENT MODERATION CHECK WITH ASYNC PARENT NOTIFICATION
         if (messageType === 'text') {
           try {
-            console.log('⚡ Fast content check for immediate UI response...');
+            console.log(' Fast content check for immediate UI response...');
             const monitoring = await contentMonitoringService.monitorTextContent(content, socket.userId, chatId);
             
             if (monitoring.blocked) {
-              console.log('❌ Inappropriate content blocked instantly:', {
+              console.log(' Inappropriate content blocked instantly:', {
                 userId: socket.userId,
                 chatId,
                 reason: monitoring.reason
@@ -241,14 +241,14 @@ class SocketService {
               });
               return;
             }
-            console.log('✅ Content approved in fast check');
+            console.log(' Content approved in fast check');
           } catch (monitoringError) {
-            console.error('⚠️ Fast content monitoring failed, using fallback moderation:', monitoringError);
+            console.error(' Fast content monitoring failed, using fallback moderation:', monitoringError);
             
             // Fallback to basic moderation if monitoring service fails
             const moderation = await moderateSocketMessage(content);
             if (moderation.is_sexual) {
-              console.log('❌ Sexual content blocked by fallback moderation');
+              console.log(' Sexual content blocked by fallback moderation');
               socket.emit('messageBlocked', {
                 reason: 'sexual_content',
                 message: 'Your message contains inappropriate content and has been blocked. Please keep conversations appropriate.',
@@ -262,7 +262,7 @@ class SocketService {
         // Check chat access
         const chat = await Chat.findById(chatId);
         if (!chat || !chat.isActive || !chat.isParticipant(socket.userId)) {
-          console.log('❌ Chat access denied:', { chatId, userId: socket.userId });
+          console.log(' Chat access denied:', { chatId, userId: socket.userId });
           socket.emit('error', { message: 'Chat not found or access denied' });
           return;
         }
@@ -292,7 +292,7 @@ class SocketService {
           }
         ]);
 
-        console.log('✅ Message created and populated:', {
+        console.log(' Message created and populated:', {
           messageId: newMessage._id,
           chatId: chatId,
           sender: newMessage.sender.username
@@ -303,15 +303,40 @@ class SocketService {
         chat.lastActivity = new Date();
         await chat.save();
 
-        // Emit to chat room
-        console.log('📢 Emitting newMessage to chat room:', `chat_${chatId}`);
+        // Emit to chat room (includes sender for real-time UI update)
+        console.log(' Emitting newMessage to chat room:', `chat_${chatId}`);
         this.io.to(`chat_${chatId}`).emit('newMessage', newMessage);
+
+        //  EMIT CHAT LIST UPDATE TO ALL PARTICIPANTS
+        // Send chat list update to all participants for home page real-time updates
+        chat.participants.forEach(participant => {
+          if (participant.isActive) {
+              console.log(`Sending chat list update to user: ${participant.user}`);
+            this.io.to(`user_${participant.user}`).emit('chatListUpdate', {
+              chatId: chatId,
+              lastMessage: {
+                _id: newMessage._id,
+                content: newMessage.content,
+                messageType: newMessage.messageType,
+                sender: {
+                  _id: newMessage.sender._id,
+                  username: newMessage.sender.username,
+                  fullName: newMessage.sender.fullName
+                },
+                createdAt: newMessage.createdAt
+              },
+              lastActivity: chat.lastActivity,
+              // Don't increment unread count for the sender
+              incrementUnread: participant.user.toString() !== socket.userId
+            });
+          }
+        });
 
         // Send confirmation to sender
         socket.emit('messageSent', { messageId: newMessage._id });
 
       } catch (error) {
-        console.error('❌ Send message error:', error);
+    console.error('Send message error:', error);
         socket.emit('error', { message: 'Failed to send message' });
       }
     });
@@ -353,12 +378,56 @@ class SocketService {
         console.error('Mark messages read error:', error);
       }
     });
+
+    // Handle markAsRead (simpler version for chat list updates)
+    socket.on('markAsRead', async (data) => {
+      try {
+        const { chatId } = data;
+        
+        if (!chatId) {
+          socket.emit('error', { message: 'Chat ID is required' });
+          return;
+        }
+
+        console.log('Marking messages as read:', { chatId, userId: socket.userId });
+
+        // Update all unread messages in this chat for this user
+        await Message.updateMany(
+          { 
+            chat: chatId, 
+            sender: { $ne: socket.userId },
+            'readBy.user': { $ne: socket.userId }
+          },
+          { 
+            $push: { 
+              readBy: { 
+                user: socket.userId, 
+                readAt: new Date() 
+              } 
+            }
+          }
+        );
+
+        // Emit read receipt to other users in the chat
+        socket.to(`chat_${chatId}`).emit('messageRead', {
+          chatId,
+          userId: socket.userId,
+          readAt: new Date()
+        });
+
+        console.log(`Messages marked as read for user ${socket.userId} in chat ${chatId}`);
+
+      } catch (error) {
+        console.error('Error marking messages as read:', error);
+        socket.emit('error', { message: 'Failed to mark messages as read' });
+      }
+    });
   }
 
   setupChatHandlers(socket) {
     // Join chat room
     socket.on('joinChat', (chatId) => {
-      console.log('🏠 joinChat event received:', {
+    console.log('joinChat event received:', {
         chatId,
         socketId: socket.id,
         userId: socket.userId
@@ -370,12 +439,12 @@ class SocketService {
         username: socket.user.username
       });
       
-      console.log('✅ User joined chat room:', `chat_${chatId}`);
+    console.log('User joined chat room:', `chat_${chatId}`);
     });
 
     // Leave chat room
     socket.on('leaveChat', (chatId) => {
-      console.log('🚪 leaveChat event received:', {
+    console.log('leaveChat event received:', {
         chatId,
         socketId: socket.id,
         userId: socket.userId
@@ -387,32 +456,103 @@ class SocketService {
         username: socket.user.username
       });
       
-      console.log('✅ User left chat room:', `chat_${chatId}`);
+    console.log('User left chat room:', `chat_${chatId}`);
+    });
+
+    // Handle chat updates
+    socket.on('updateChat', async (data) => {
+      try {
+        const { chatId, updates } = data;
+        
+        if (!chatId) {
+          socket.emit('error', { message: 'Chat ID is required' });
+          return;
+        }
+
+        // Verify user is participant in the chat
+        const chat = await Chat.findById(chatId);
+        if (!chat) {
+          socket.emit('error', { message: 'Chat not found' });
+          return;
+        }
+
+        const isParticipant = chat.participants.some(p => 
+          p.user.toString() === socket.userId
+        );
+
+        if (!isParticipant) {
+          socket.emit('error', { message: 'You are not a participant in this chat' });
+          return;
+        }
+
+        // Update the chat
+        const updatedChat = await Chat.findByIdAndUpdate(
+          chatId, 
+          updates, 
+          { new: true }
+        ).populate('participants.user', 'username fullName profilePicture');
+
+        // Broadcast the update to all chat participants
+        this.io.to(`chat_${chatId}`).emit('chatUpdated', updatedChat);
+
+    console.log(`Chat ${chatId} updated and broadcasted`);
+
+      } catch (error) {
+        console.error('Error updating chat:', error);
+        socket.emit('error', { message: 'Failed to update chat' });
+      }
     });
   }
 
   setupTypingHandlers(socket) {
-    // Start typing
-    socket.on('startTyping', (data) => {
-      const { chatId } = data;
+    // Handle typing indicators - fixed to use consistent event names
+    socket.on('typing', (data) => {
+      const { chatId, isTyping } = data;
+      
+        console.log('Typing event received:', {
+        userId: socket.userId,
+        chatId,
+        isTyping,
+        username: socket.user.username
+      });
+      
       if (chatId) {
-        socket.to(`chat_${chatId}`).emit('userStartTyping', {
+        // Broadcast typing status to OTHER users in chat (not the sender)
+        socket.to(`chat_${chatId}`).emit(isTyping ? 'userTyping' : 'userStoppedTyping', {
           userId: socket.userId,
           username: socket.user.username,
-          chatId
+          chatId,
+          timestamp: new Date()
         });
+        
+          console.log(`Broadcasted ${isTyping ? 'userTyping' : 'userStoppedTyping'} to chat_${chatId} (excluding sender)`);
       }
     });
 
-    // Stop typing
+    // Legacy support for startTyping/stopTyping events
+    socket.on('startTyping', (data) => {
+      const { chatId } = data;
+      if (chatId) {
+        socket.to(`chat_${chatId}`).emit('userTyping', {
+          userId: socket.userId,
+          username: socket.user.username,
+          chatId,
+          timestamp: new Date()
+        });
+    console.log('Legacy startTyping - broadcasted userTyping to chat_' + chatId);
+      }
+    });
+
     socket.on('stopTyping', (data) => {
       const { chatId } = data;
       if (chatId) {
-        socket.to(`chat_${chatId}`).emit('userStopTyping', {
+        socket.to(`chat_${chatId}`).emit('userStoppedTyping', {
           userId: socket.userId,
           username: socket.user.username,
-          chatId
+          chatId,
+          timestamp: new Date()
         });
+    console.log('Legacy stopTyping - broadcasted userStoppedTyping to chat_' + chatId);
       }
     });
   }
@@ -525,6 +665,27 @@ class SocketService {
 
   getUserStatus(userId) {
     return this.connectedUsers.has(userId);
+  }
+
+  // Notify users about new chats
+  notifyNewChat(chatData, participantIds) {
+  console.log('Notifying users about new chat:', chatData._id);
+    participantIds.forEach(userId => {
+      this.emitToUser(userId, 'newChat', chatData);
+    });
+  }
+
+  // Notify users about chat deletions
+  notifyChatDeleted(chatId, participantIds) {
+  console.log('Notifying users about deleted chat:', chatId);
+    participantIds.forEach(userId => {
+      this.emitToUser(userId, 'chatDeleted', { chatId });
+    });
+  }
+
+  // Notify users about chat updates (for chat list)
+  notifyChatListUpdate(userId, updateData) {
+    this.emitToUser(userId, 'chatListUpdate', updateData);
   }
 }
 

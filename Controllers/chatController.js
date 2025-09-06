@@ -56,16 +56,20 @@ export const createGroupChat = async (req, res) => {
       }
     ]);
 
-    // Emit to all participants
+    // Emit to all participants (only if io exists)
     const io = req.app.get('io');
-    participantIds.forEach(participantId => {
-      io.to(`user_${participantId}`).emit('chatCreated', newChat);
-    });
+    if (io) {
+      participantIds.forEach(participantId => {
+        io.to(`user_${participantId}`).emit('chatCreated', newChat);
+      });
+    }
 
     res.status(201).json({
       success: true,
       message: 'Group chat created successfully',
-      data: newChat
+      data: {
+        chat: newChat
+      }
     });
 
   } catch (error) {
@@ -115,6 +119,15 @@ export const createDirectChat = async (req, res) => {
         select: 'username fullName profilePicture isOnline'
       }
     ]);
+
+    // Emit to both participants if it's a new chat
+    const io = req.app.get('io');
+    if (io) {
+      const participantIds = [userId, participantId];
+      participantIds.forEach(pId => {
+        io.to(`user_${pId}`).emit('newChat', chat);
+      });
+    }
 
     res.status(200).json({
       success: true,

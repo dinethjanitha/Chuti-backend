@@ -47,7 +47,7 @@ const userSchema = new mongoose.Schema({
   parentEmail: {
     type: String,
     required: function() {
-      return this.age < 13; // Only required for children under 13
+      return this.age < 18; // Required for children under 18
     },
     trim: true,
     lowercase: true,

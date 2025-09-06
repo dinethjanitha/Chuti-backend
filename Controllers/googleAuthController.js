@@ -87,6 +87,14 @@ export const completeGoogleRegistration = async (req, res) => {
       });
     }
 
+    // Validate that parent email is different from child email
+    if (parentEmail && parentEmail.toLowerCase().trim() === decodedToken.email.toLowerCase().trim()) {
+      return res.status(400).json({
+        status: 'fail',
+        message: 'Parent email must be different from child email address'
+      });
+    }
+
     // Determine role based on age
     const userRole = age < 18 ? 'children' : 'user';
 

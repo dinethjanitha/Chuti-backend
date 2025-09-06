@@ -1,4 +1,3 @@
-.env
 /node_modules
 /moderation-service
 /moderation-venv
@@ -10,3 +9,4 @@ API_DOCUMENTATION.md
 FIREBASE_OAUTH_GUIDE.md
 GOOGLE_OAUTH_GUIDE.md
 IMAGE_FEATURE_GUIDE.md
+.env

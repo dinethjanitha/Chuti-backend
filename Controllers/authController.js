@@ -28,6 +28,14 @@ export const signup = async (req, res) => {
       });
     }
 
+    // Validate that parent email is different from child email
+    if (parentEmail && parentEmail.toLowerCase().trim() === email.toLowerCase().trim()) {
+      return res.status(400).json({
+        status: 'fail',
+        message: 'Parent email must be different from child email address'
+      });
+    }
+
     // Determine role based on age
     const userRole = age < 18 ? 'children' : 'user';
 
@@ -39,7 +47,7 @@ export const signup = async (req, res) => {
       fullName: fullName || username, // Use username as fullName if not provided
       age,
       role: userRole,
-      parentEmail: age < 13 ? parentEmail : undefined, // Only set parentEmail for children under 13
+      parentEmail: age < 18 ? parentEmail : undefined, // Only set parentEmail for children under 18
       isVerified: false, // User needs to verify email
       emailVerified: false,
       parentEmailVerified: false,
@@ -70,7 +78,7 @@ export const signup = async (req, res) => {
     }
 
     // Send verification to parent email if user is a child
-    if (newUser.parentEmail && newUser.age < 13) {
+    if (newUser.parentEmail && newUser.age < 18) {
       try {
         const parentVerification = await Verification.createVerification(
           newUser.parentEmail, 
@@ -101,7 +109,7 @@ export const signup = async (req, res) => {
         user: newUser.getPublicProfile(),
         verificationResults,
         requiresVerification: true,
-        requiresParentVerification: !!(newUser.parentEmail && newUser.age < 13)
+        requiresParentVerification: !!(newUser.parentEmail && newUser.age < 18)
       }
     });
 
@@ -157,6 +165,14 @@ export const login = async (req, res) => {
       return res.status(401).json({
         status: 'fail',
         message: 'Incorrect email/username or password'
+      });
+    }
+
+    // Check if user is verified
+    if (!user.isVerified) {
+      return res.status(401).json({
+        status: 'fail',
+        message: 'Please verify your email before logging in'
       });
     }
 
