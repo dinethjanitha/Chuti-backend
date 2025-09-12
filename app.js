@@ -70,7 +70,7 @@ const corsOption = {
     "exp://192.168.8.145:8082", // Your Expo mobile app
     "exp://192.168.8.145:8082", // Your Expo mobile app
     "exp://192.168.8.137:8081",
-    "https://chutiadmin.vercel.app/" // Vercel App
+    "https://chutiadmin.vercel.app" // Vercel App
   ],
   methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
   allowedHeaders: ["Content-Type", "Authorization"],
