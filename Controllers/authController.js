@@ -1,7 +1,7 @@
 import User from '../Models/User.js';
 import Verification from '../Models/Verification.js';
 import emailService from '../services/emailService.js';
-import { createSendToken, generateToken, verifyToken } from '../utils/jwt.js';
+import { createSendToken, createSendTokenWithVerification, generateToken, verifyToken } from '../utils/jwt.js';
 
 // Register new user
 export const signup = async (req, res) => {
@@ -168,21 +168,21 @@ export const login = async (req, res) => {
       });
     }
 
-    // Check if user is verified
-    if (!user.isVerified) {
-      return res.status(401).json({
-        status: 'fail',
-        message: 'Please verify your email before logging in'
-      });
-    }
-
     // Update user status
     user.isOnline = true;
     user.lastSeen = new Date();
     await user.save({ validateBeforeSave: false });
 
-    // Send token
-    createSendToken(user, 200, res);
+    // Check verification status
+    const needsVerification = !user.isVerified;
+    const needsParentVerification = user.age < 18 && user.parentEmail && !user.parentEmailVerified;
+    
+    // Send token with verification status
+    createSendTokenWithVerification(user, 200, res, {
+      needsVerification,
+      needsParentVerification,
+      verificationStatus: user.verificationStatus || 'pending'
+    });
 
   } catch (error) {
     res.status(500).json({

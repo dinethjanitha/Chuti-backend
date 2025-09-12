@@ -3,13 +3,10 @@ import Chat from '../Models/Chat.js';
 import { sendParentContentAlert } from './emailService.js';
 import { checkSexualContent } from '../middleware/moderationMiddleware.js';
 
-/**
- * Content Monitoring Service
- * Handles detection and notification of inappropriate content
- */
+
 class ContentMonitoringService {
   constructor() {
-    console.log('🛡️ Content Monitoring Service initialized');
+    console.log('Content Monitoring Service initialized');
   }
 
   /**
@@ -20,13 +17,13 @@ class ContentMonitoringService {
    */
   async quickContentCheck(content, senderId) {
     try {
-      console.log('⚡ Quick content check for immediate UI response...');
+      console.log('Quick content check for immediate UI response...');
       
       // Check for sexual content using fast moderation
       const moderationResult = await checkSexualContent(content);
       
       if (moderationResult.is_sexual) {
-        console.log('🚨 Sexual content detected - blocking immediately');
+        console.log('Sexual content detected - blocking immediately');
         
         return {
           blocked: true,
@@ -35,11 +32,11 @@ class ContentMonitoringService {
         };
       }
 
-      console.log('✅ Content approved in quick check');
+      console.log('Content approved in quick check');
       return { blocked: false, approved: true };
 
     } catch (error) {
-      console.error('❌ Error in quick content check:', error);
+      console.error('Error in quick content check:', error);
       return { blocked: false, error: error.message };
     }
   }

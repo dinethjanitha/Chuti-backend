@@ -61,3 +61,40 @@ export const createSendToken = (user, statusCode, res) => {
     }
   });
 };
+
+// Create and send token response with verification info
+export const createSendTokenWithVerification = (user, statusCode, res, verificationInfo = {}) => {
+  const token = generateToken(user._id);
+  const refreshToken = generateRefreshToken(user._id);
+
+  // Cookie options
+  const cookieOptions = {
+    expires: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax'
+  };
+
+  // Send token as cookie
+  res.cookie('jwt', token, cookieOptions);
+  res.cookie('refreshToken', refreshToken, {
+    ...cookieOptions,
+    expires: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // 7 days
+  });
+
+  // Remove password from output
+  user.password = undefined;
+
+  res.status(statusCode).json({
+    status: 'success',
+    token,
+    refreshToken,
+    data: {
+      user: user.getPublicProfile()
+    },
+    // Add verification information
+    requiresVerification: verificationInfo.needsVerification || false,
+    requiresParentVerification: verificationInfo.needsParentVerification || false,
+    verificationStatus: verificationInfo.verificationStatus || 'complete'
+  });
+};
